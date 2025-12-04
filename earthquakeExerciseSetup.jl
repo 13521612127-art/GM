@@ -1,3 +1,9 @@
+function value(xs, ys, xd, yd)
+    d2 = (xs - xd)^2 + (ys - yd)^2
+    return 1.0 / (d2 + 1.0)
+end
+
+
 function earthquake_exercise_setup()
     # explosion detector (using spiral coordinate system)
     # define the coordinate system:

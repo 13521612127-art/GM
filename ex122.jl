@@ -8,7 +8,8 @@ S = length(x)
 N = length(x_sensor)       
 sigma = 0.2                
 
-v_obs = vec(readdlm("EarthquakeExerciseData.txt"))
+data_path = joinpath(@__DIR__, "EarthquakeExerciseData.txt")
+v_obs = vec(readdlm(data_path))
 @assert length(v_obs) == N
 
 #    F[k, i] = 1 / (d^2 + 0.1)
