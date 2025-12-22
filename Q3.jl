@@ -171,7 +171,13 @@ end
 # =========================
 # Main script
 # =========================
-DATA_PATH = "meteo1.csv"   # if you cd() into the folder containing it, this is fine
+
+DATA_PATH = joinpath(@__DIR__, "meteo1.csv")   # meteo1.csv should be in the same folder as this .jl file
+
+@printf("Script directory (@__DIR__) = %s\n", @__DIR__)
+@printf("Looking for data at        = %s\n", DATA_PATH)
+
+@assert isfile(DATA_PATH) "meteo1.csv not found. Put it in the same folder as this script: $(@__DIR__)"
 
 df = CSV.read(DATA_PATH, DataFrame; header=false)
 X = Matrix{Int}(df)
