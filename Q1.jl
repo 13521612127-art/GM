@@ -107,5 +107,13 @@ for i in 1:length(x_sensor)
     )
 end
 
+ind = argmax(w)   # 返回一个 CartesianIndex(k1, k2)
+k1_map, k2_map = Tuple(ind)
+
+println("Most likely pair of explosion points:")
+println("s1: x = ", x[k1_map], ", y = ", y[k1_map])
+println("s2: x = ", x[k2_map], ", y = ", y[k2_map])
+
+
 display(plt)
 savefig(plt, "posterior_s1_red_sensors.png")
