@@ -40,7 +40,7 @@ end
 Lmax = maximum(loglik)
 w = exp.(loglik .- Lmax)
 
-unnorm_s1 = sum(w, dims = 2)          # 对第二维 (k2) 求和
+unnorm_s1 = sum(w, dims = 2)
 posterior_s1 = vec(unnorm_s1 ./ sum(unnorm_s1))
 
 println("Sum of posterior p(s1 | v)  = ", sum(posterior_s1))
@@ -107,7 +107,7 @@ for i in 1:length(x_sensor)
     )
 end
 
-ind = argmax(w)   # 返回一个 CartesianIndex(k1, k2)
+ind = argmax(w)
 k1_map, k2_map = Tuple(ind)
 
 println("Most likely pair of explosion points:")
