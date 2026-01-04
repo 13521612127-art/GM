@@ -1,4 +1,4 @@
-# ---- H2: two explosions ----
+#H2: two explosions
 Lmax = maximum(loglik)
 w = exp.(loglik .- Lmax)
 
@@ -6,7 +6,7 @@ logp_H2 = Lmax + log(sum(w)) - 2 * log(S)
 
 
 
-# ---- H1: one explosion ----
+#H1: one explosion
 loglik1 = zeros(S)
 
 for s in 1:S
@@ -22,5 +22,5 @@ logp_H1 = L1max + log(sum(w1)) - log(S)
 
 
 
-# ---- Final answer ----
+#Final answer
 println("log p(v|H2) - log p(v|H1) = ", logp_H2 - logp_H1)

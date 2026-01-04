@@ -1,10 +1,6 @@
-#######################
 #  Q2 Meeting scheduling
-#######################
-
-###############
 # Part (a)
-###############
+
 
 # CDF of delay for a punctual friend, F_p(t) = P(D ≤ t | Z = punctual)
 # P(D ≤ 0)        = 0.7
@@ -13,7 +9,7 @@
 # P(10 ≤ D < 15)  = 0.07
 # P(15 ≤ D < 20)  = 0.02
 # P(20 ≤ D)       = 0.01
-# => cumulative: 0.7, 0.8, 0.9, 0.97, 0.99, 1.0
+# cumulative: 0.7, 0.8, 0.9, 0.97, 0.99, 1.0
 using Distributions
 
 function cdf_punctual(t::Real)
@@ -61,9 +57,8 @@ for N in (3, 5, 10)
 end
 
 
-###############
+
 # Part (b)
-###############
 
 # CDF of delay for a non-punctual friend, F_np(t) = P(D ≤ t | Z = not punctual)
 # P(D ≤ 0)        = 0.5
@@ -72,7 +67,7 @@ end
 # P(10 ≤ D < 15)  = 0.1
 # P(15 ≤ D < 20)  = 0.05
 # P(20 ≤ D)       = 0.05
-# => cumulative: 0.5, 0.7, 0.8, 0.9, 0.95, 1.0
+# cumulative: 0.5, 0.7, 0.8, 0.9, 0.95, 1.0
 
 function cdf_not_punctual(t::Real)
     if t <= 0
@@ -118,9 +113,8 @@ for N in (3, 5, 10)
     println(p_catch)
 end
 
-################
-# Bonus：N=5 且误车后，不守时人数 K 的后验分布
-################
+
+# Bonus：N=5 
 
 println("\n===== Bonus: posterior for number of non-punctual friends (N = 5) =====")
 
@@ -140,12 +134,12 @@ binom_prior = Binomial(N_bonus, w_not_punctual)
 
 # Likelihood: P(miss train | K = k)
 function likelihood_miss(k::Int)
-    # k non-punctual, N-k punctual
+
     prob_all_on_time = (1 - p_late_n)^k * (1 - p_late_p)^(N_bonus - k)
     return 1 - prob_all_on_time
 end
 
-# Unnormalized posterior over K = 0,1,...,N_bonus
+# Unnormalized posterior
 posterior_unnorm = [
     pdf(binom_prior, k) * likelihood_miss(k) for k in 0:N_bonus
 ]

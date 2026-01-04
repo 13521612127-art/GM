@@ -1,8 +1,6 @@
 using CSV, DataFrames, Random, Printf, Statistics
 
-# =========================
-# Helpers
-# =========================
+
 function logsumexp(v::AbstractVector{<:Real})
     m = maximum(v)
     return m + log(sum(exp.(v .- m)))
@@ -13,7 +11,7 @@ function normalize_vec(v::AbstractVector{<:Real}; eps=1e-12)
     return w ./ sum(w)
 end
 
-# Marsaglia–Tsang Gamma sampler (self-contained, no Distributions.jl)
+# Marsaglia–Tsang Gamma sampler
 function gamma_rand(shape::Real, rng::AbstractRNG; scale::Real=1.0)
     if shape < 1
         u = rand(rng)
@@ -43,9 +41,8 @@ function dirichlet_sample(α::AbstractVector{<:Real}, rng::AbstractRNG)
     return g ./ sum(g)
 end
 
-# =========================
+
 # Core: EM for mixture of Markov chains
-# =========================
 function em_mix_markov(X::Matrix{Int};
         K::Int=3, S::Int=3, max_iter::Int=200, tol::Float64=1e-6, seed::Int=42, eps::Float64=1e-12)
 
@@ -101,7 +98,6 @@ function em_mix_markov(X::Matrix{Int};
             break
         end
 
-        # ----- M-step -----
         θ = normalize_vec(vec(mean(γ, dims=1)); eps=eps)
 
         # update π
@@ -168,11 +164,11 @@ function responsibilities(X::Matrix{Int}, θ, π, A; eps=1e-12)
     return γ
 end
 
-# =========================
-# Main script
-# =========================
 
-DATA_PATH = joinpath(@__DIR__, "meteo1.csv")   # meteo1.csv should be in the same folder as this .jl file
+# Main script
+
+
+DATA_PATH = joinpath(@__DIR__, "meteo1.csv")
 
 @printf("Script directory (@__DIR__) = %s\n", @__DIR__)
 @printf("Looking for data at        = %s\n", DATA_PATH)
