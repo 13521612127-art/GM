@@ -1,6 +1,5 @@
 using CSV, DataFrames, Random, Printf, Statistics
 
-
 function logsumexp(v::AbstractVector{<:Real})
     m = maximum(v)
     return m + log(sum(exp.(v .- m)))
@@ -41,16 +40,15 @@ function dirichlet_sample(α::AbstractVector{<:Real}, rng::AbstractRNG)
     return g ./ sum(g)
 end
 
-
 # Core: EM for mixture of Markov chains
 function em_mix_markov(X::Matrix{Int};
-        K::Int=3, S::Int=3, max_iter::Int=200, tol::Float64=1e-6, seed::Int=42, eps::Float64=1e-12)
+        K::Int=3, S::Int=3, max_iter::Int=200, tol::Float64=1e-6,
+        seed::Int=42, eps::Float64=1e-12, verbose::Bool=false)
 
     N, T = size(X)
-
-    # init
     rng = MersenneTwister(seed)
 
+    # random Dirichlet initialisation
     θ = dirichlet_sample(ones(K), rng)        # mixture weights
     π = zeros(Float64, K, S)                  # initial distributions
     A = zeros(Float64, K, S, S)               # transitions
@@ -64,9 +62,8 @@ function em_mix_markov(X::Matrix{Int};
 
     loglik_hist = Float64[]
 
-    # EM iterations
     for it in 1:max_iter
-        # ----- E-step -----
+        # E-step
         logp = zeros(Float64, N, K)
 
         @inbounds for n in 1:N
@@ -93,16 +90,22 @@ function em_mix_markov(X::Matrix{Int};
         end
         push!(loglik_hist, ll)
 
+        if verbose && (it == 1 || it % 10 == 0)
+            @printf("iter %d, log-likelihood = %.6f\n", it, ll)
+        end
+
         if it > 1 && abs(loglik_hist[end] - loglik_hist[end-1]) < tol
-            @printf("Converged at iter %d, log-likelihood = %.6f\n", it, ll)
+            if verbose
+                @printf("Converged at iter %d, log-likelihood = %.6f\n", it, ll)
+            end
             break
         end
 
+        # M-step
         θ = normalize_vec(vec(mean(γ, dims=1)); eps=eps)
 
         # update π
         for k in 1:K
-            denom = sum(view(γ, :, k)) + eps
             counts = zeros(Float64, S)
             @inbounds for n in 1:N
                 s1 = X[n, 1] + 1
@@ -143,45 +146,79 @@ function responsibilities(X::Matrix{Int}, θ, π, A; eps=1e-12)
     N, T = size(X)
     K = length(θ)
     logp = zeros(Float64, N, K)
+
     @inbounds for n in 1:N
-        x1 = X[n,1] + 1
+        x1 = X[n, 1] + 1
         for k in 1:K
             lp = log(π[k, x1] + eps)
             for t in 2:T
-                s_prev = X[n,t-1] + 1
-                s_cur  = X[n,t]   + 1
+                s_prev = X[n, t-1] + 1
+                s_cur  = X[n, t]   + 1
                 lp += log(A[k, s_prev, s_cur] + eps)
             end
-            logp[n,k] = lp
+            logp[n, k] = lp
         end
     end
+
     log_joint = logp .+ reshape(log.(θ .+ eps), (1, K))
     γ = zeros(Float64, N, K)
+
     @inbounds for n in 1:N
         lse = logsumexp(view(log_joint, n, :))
         γ[n, :] = exp.(view(log_joint, n, :) .- lse)
     end
+
     return γ
 end
 
+# Multi-start wrapper
+function em_multistart(X::Matrix{Int};
+        K::Int=3, S::Int=3, max_iter::Int=200, tol::Float64=1e-6,
+        eps::Float64=1e-12, seeds=1:10, verbose_each::Bool=false)
+
+    best_ll = -Inf
+    best = nothing
+
+    for sd in seeds
+    θ_try, π_try, A_try, llhist_try = em_mix_markov(
+        X; K=K, S=S, max_iter=max_iter, tol=tol, seed=sd, eps=eps, verbose=verbose_each
+    )
+
+    ll_try   = llhist_try[end]
+    n_iters  = length(llhist_try)
+
+    @printf("seed=%d  iters=%d  final log-likelihood=%.6f\n",
+            sd, n_iters, ll_try)
+
+    if ll_try > best_ll
+        best_ll = ll_try
+        best = (θ_try, π_try, A_try, llhist_try, sd)
+    end
+end
+
+
+    θ, π, A, llhist, best_seed = best
+    return θ, π, A, llhist, best_seed, best_ll
+end
 
 # Main script
-
 
 DATA_PATH = joinpath(@__DIR__, "meteo1.csv")
 
 @printf("Script directory (@__DIR__) = %s\n", @__DIR__)
 @printf("Looking for data at        = %s\n", DATA_PATH)
-
 @assert isfile(DATA_PATH) "meteo1.csv not found. Put it in the same folder as this script: $(@__DIR__)"
 
 df = CSV.read(DATA_PATH, DataFrame; header=false)
 X = Matrix{Int}(df)
 
-# Run EM
-θ, π, A, llhist = em_mix_markov(X; K=3, S=3, max_iter=200, tol=1e-6, seed=42)
+# Run EM with multi-start (best practice)
+seeds = 1:10
+θ, π, A, llhist, best_seed, best_ll = em_multistart(
+    X; K=3, S=3, max_iter=200, tol=1e-6, eps=1e-12, seeds=seeds, verbose_each=false
+)
 
-@printf("\nFinal log-likelihood: %.6f\n\n", llhist[end])
+@printf("\nSelected run: seed=%d, final log-likelihood=%.6f\n\n", best_seed, best_ll)
 
 println("Mixture weights θ (k=1..3):")
 println(θ)
