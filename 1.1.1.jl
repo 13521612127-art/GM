@@ -113,6 +113,9 @@ k1_map, k2_map = Tuple(ind)
 println("Most likely pair of explosion points:")
 println("s1: x = ", x[k1_map], ", y = ", y[k1_map])
 println("s2: x = ", x[k2_map], ", y = ", y[k2_map])
+println("Posterior values at MAP locations (from p(s1 | v)):")
+println("p(s1 = k1_map | v) = ", posterior_s1[k1_map])
+println("p(s1 = k2_map | v) = ", posterior_s1[k2_map])
 
 
 display(plt)
