@@ -69,9 +69,6 @@ def mean_field_coordinate_ascent(
 
                 new = sigmoid(beta * field)
 
-                if damping > 0.0:
-                    new = (1.0 - damping) * new + damping * m[i, j]
-
                 delta = abs(new - m[i, j])
                 if delta > max_delta:
                     max_delta = delta
