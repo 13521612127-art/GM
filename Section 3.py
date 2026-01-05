@@ -5,22 +5,14 @@ def sigmoid(z):
 def format_joint(J):
     return np.array2string(J, formatter={"float_kind": lambda x: f"{x:0.6f}"})
 def enumerate_columns(n=10):
-    """All 2^n column states as 0/1 bit-vectors, top bit first."""
     states = np.arange(2**n, dtype=np.uint16)
     bits = ((states[:, None] >> np.arange(n - 1, -1, -1)) & 1).astype(np.uint8)
     return bits
 
 def within_score(bits):
-    """Vertical agreements count in a column state (n-1 adjacent pairs)."""
     return np.sum(bits[:, :-1] == bits[:, 1:], axis=1)
 
 def exact_joint_top_bottom(n=10, beta=1.0):
-    """
-    Computes exact P(x_{1,n}, x_{n,n}) by:
-      - cluster each column into X_t (2^n states)
-      - chain forward recursion (sum-product on induced chain)
-      - aggregate over last-column states matching (top,bottom).
-    """
     bits = enumerate_columns(n)
     S = 2**n
 
@@ -51,22 +43,6 @@ def mean_field_coordinate_ascent(
     n=10, beta=1.0, max_sweeps=5000, tol=1e-10,
     seed=1, init="random", damping=0.0, order="raster"
 ):
-    """
-    Fully-factorised mean field with *coordinate ascent* (Gauss–Seidel / CAVI).
-
-    Variational family:
-        q(x) = Π_{i,j} Bernoulli(m_{ij}),   m_{ij} = q_{ij}(x_{ij}=1).
-
-    Coordinate update for site (i,j):
-        m_{ij} <- sigmoid( beta * sum_{nbr}(2*m_nbr - 1) )
-
-    Update schedule:
-      - order="raster": deterministic scan i=0..n-1, j=0..n-1 each sweep
-      - order="random": random permutation of sites each sweep
-
-    Damping:
-        m <- (1-damping)*new + damping*old
-    """
     rng = np.random.default_rng(seed)
 
     if init == "random":
@@ -110,7 +86,6 @@ def mean_field_coordinate_ascent(
     return m
 
 def mf_joint_from_m(m_top, m_bot):
-    """Because MF factorises: q(top,bottom) = q(top) q(bottom)."""
     return np.array([
         [(1-m_top)*(1-m_bot), (1-m_top)*m_bot],
         [m_top*(1-m_bot),     m_top*m_bot]
@@ -119,12 +94,6 @@ def mf_joint_from_m(m_top, m_bot):
 
 def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
                        burn_in=2000, thin=5, seed=1, init="random"):
-    """
-    Vectorised checkerboard Gibbs:
-      - update all black sites given white
-      - update all white sites given black
-    Returns joint estimate for (top,bottom) of rightmost column.
-    """
     rng = np.random.default_rng(seed)
     if init == "random":
         x = rng.integers(0, 2, size=(n, n), dtype=np.int8)
@@ -181,7 +150,7 @@ def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
 
 if __name__ == "__main__":
     for beta in [4, 1, 0.01]:
-        print(f"\n===== beta = {beta} =====")
+        print(f" beta = {beta} ")
 
         J_exact = exact_joint_top_bottom(n=10, beta=beta)
         print("Exact:\n", format_joint(J_exact))

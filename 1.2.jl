@@ -1,15 +1,6 @@
 #  Q2 Meeting scheduling
 # Part (a)
 
-
-# CDF of delay for a punctual friend, F_p(t) = P(D ≤ t | Z = punctual)
-# P(D ≤ 0)        = 0.7
-# P(0 < D < 5)    = 0.1
-# P(5 ≤ D < 10)   = 0.1
-# P(10 ≤ D < 15)  = 0.07
-# P(15 ≤ D < 20)  = 0.02
-# P(20 ≤ D)       = 0.01
-# cumulative: 0.7, 0.8, 0.9, 0.97, 0.99, 1.0
 using Distributions
 
 function cdf_punctual(t::Real)
@@ -28,12 +19,6 @@ function cdf_punctual(t::Real)
     end
 end
 
-"""
-    meeting_time_punctual(N; target = 0.9)
-
-Return the smallest T0 (minutes early) such that
-P(all N friends are on time) = F_p(T0)^N ≥ target.
-"""
 function meeting_time_punctual(N::Int; target = 0.9)
     # Only these points matter because the CDF jumps here.
     candidates = [0, 5, 10, 15, 20]
@@ -60,14 +45,6 @@ end
 
 # Part (b)
 
-# CDF of delay for a non-punctual friend, F_np(t) = P(D ≤ t | Z = not punctual)
-# P(D ≤ 0)        = 0.5
-# P(0 < D < 5)    = 0.2
-# P(5 ≤ D < 10)   = 0.1
-# P(10 ≤ D < 15)  = 0.1
-# P(15 ≤ D < 20)  = 0.05
-# P(20 ≤ D)       = 0.05
-# cumulative: 0.5, 0.7, 0.8, 0.9, 0.95, 1.0
 
 function cdf_not_punctual(t::Real)
     if t <= 0
@@ -86,8 +63,6 @@ function cdf_not_punctual(t::Real)
 end
 
 # Prior over Z_i:
-# P(Z_i = punctual)     = 2/3
-# P(Z_i = not punctual) = 1/3
 const w_punctual     = 2/3
 const w_not_punctual = 1/3
 
