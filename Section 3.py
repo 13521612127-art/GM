@@ -14,6 +14,7 @@ def enumerate_columns(n=10):
 def within_score(bits):
     return np.sum(bits[:, :-1] == bits[:, 1:], axis=1)
 
+# Exact inference
 def exact_joint_top_bottom(n=10, beta=1.0):
     bits = enumerate_columns(n)
     S = 2**n
@@ -40,6 +41,7 @@ def exact_joint_top_bottom(n=10, beta=1.0):
             joint[a, b] = p_last[(top == a) & (bottom == b)].sum()
     return joint
 
+# Mean-field approximation
 def mean_field_coordinate_ascent(
     n=10, beta=1.0, max_sweeps=5000, tol=1e-10,
     seed=1, init="random", damping=0.0, order="raster"
@@ -92,6 +94,7 @@ def mf_joint_from_m(m_top, m_bot):
         [m_top*(1-m_bot),     m_top*m_bot]
     ], dtype=float)
 
+# Gibbs Sampling
 def gibbs_single_site(
     n=10, beta=1.0, n_samples=10000,
     burn_in=1000, thin=5, seed=1, init="random",
