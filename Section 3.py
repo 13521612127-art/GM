@@ -1,9 +1,11 @@
 import numpy as np
+
 def sigmoid(z):
     return 1.0 / (1.0 + np.exp(-z))
 
 def format_joint(J):
     return np.array2string(J, formatter={"float_kind": lambda x: f"{x:0.6f}"})
+
 def enumerate_columns(n=10):
     states = np.arange(2**n, dtype=np.uint16)
     bits = ((states[:, None] >> np.arange(n - 1, -1, -1)) & 1).astype(np.uint8)
@@ -37,7 +39,6 @@ def exact_joint_top_bottom(n=10, beta=1.0):
         for b in (0, 1):
             joint[a, b] = p_last[(top == a) & (bottom == b)].sum()
     return joint
-
 
 def mean_field_coordinate_ascent(
     n=10, beta=1.0, max_sweeps=5000, tol=1e-10,
@@ -91,10 +92,14 @@ def mf_joint_from_m(m_top, m_bot):
         [m_top*(1-m_bot),     m_top*m_bot]
     ], dtype=float)
 
+def gibbs_single_site(
+    n=10, beta=1.0, n_samples=10000,
+    burn_in=1000, thin=5, seed=1, init="random",
+    scan="raster"
+):
 
-def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
-                       burn_in=2000, thin=5, seed=1, init="random"):
     rng = np.random.default_rng(seed)
+
     if init == "random":
         x = rng.integers(0, 2, size=(n, n), dtype=np.int8)
     elif init == "zeros":
@@ -105,18 +110,17 @@ def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
         raise ValueError("init must be random/zeros/ones")
 
     ii, jj = np.indices((n, n))
-    black = ((ii + jj) % 2 == 0)
-    white = ~black
-
     degree = (ii > 0).astype(np.int8) + (ii < n-1).astype(np.int8) + \
              (jj > 0).astype(np.int8) + (jj < n-1).astype(np.int8)
 
-    def sum_neighbors(x):
-        s = np.zeros_like(x, dtype=np.int16)
-        s[1:, :]  += x[:-1, :]
-        s[:-1, :] += x[1:, :]
-        s[:, 1:]  += x[:, :-1]
-        s[:, :-1] += x[:, 1:]
+    coords = [(i, j) for i in range(n) for j in range(n)]
+
+    def neigh_sum_at(i, j):
+        s = 0
+        if i > 0:     s += x[i-1, j]
+        if i < n-1:   s += x[i+1, j]
+        if j > 0:     s += x[i, j-1]
+        if j < n-1:   s += x[i, j+1]
         return s
 
     total_sweeps = burn_in + n_samples * thin
@@ -124,21 +128,24 @@ def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
     k = 0
 
     for t in range(total_sweeps):
-        neigh = sum_neighbors(x)
-        s = 2 * neigh - degree
-        p1 = sigmoid(beta * s)
-        r = rng.random(size=(n, n))
-        x[black] = (r[black] < p1[black]).astype(np.int8)
+        if scan == "raster":
+            sweep_coords = coords
+        elif scan == "random":
+            perm = rng.permutation(n * n)
+            sweep_coords = [coords[idx] for idx in perm]
+        else:
+            raise ValueError("scan must be 'raster' or 'random'")
 
-        neigh = sum_neighbors(x)
-        s = 2 * neigh - degree
-        p1 = sigmoid(beta * s)
-        r = rng.random(size=(n, n))
-        x[white] = (r[white] < p1[white]).astype(np.int8)
+  
+        for (i, j) in sweep_coords:
+            neigh = neigh_sum_at(i, j)
+            s = 2 * neigh - int(degree[i, j])
+            p1 = sigmoid(beta * s)
+            x[i, j] = 1 if rng.random() < p1 else 0
 
         if t >= burn_in and ((t - burn_in) % thin == 0):
-            samples[k, 0] = x[0, n-1]
-            samples[k, 1] = x[n-1, n-1]
+            samples[k, 0] = x[0, n-1]     
+            samples[k, 1] = x[n-1, n-1]   
             k += 1
 
     joint = np.zeros((2, 2), dtype=float)
@@ -146,7 +153,6 @@ def gibbs_checkerboard(n=10, beta=1.0, n_samples=20000,
         for b in (0, 1):
             joint[a, b] = np.mean((samples[:, 0] == a) & (samples[:, 1] == b))
     return joint
-
 
 if __name__ == "__main__":
     for beta in [4, 1, 0.01]:
@@ -166,10 +172,13 @@ if __name__ == "__main__":
         print("Mean Field (coord ascent):\n", format_joint(J_mf))
 
         if beta == 4:
-            J1 = gibbs_checkerboard(n=10, beta=beta, init="ones")
-            J0 = gibbs_checkerboard(n=10, beta=beta, init="zeros")
+            J1 = gibbs_single_site(n=10, beta=beta, init="ones",
+                                   n_samples=20000, burn_in=2000, thin=5, seed=1, scan="raster")
+            J0 = gibbs_single_site(n=10, beta=beta, init="zeros",
+                                   n_samples=20000, burn_in=2000, thin=5, seed=1, scan="raster")
             J_gibbs = 0.5 * (J0 + J1)
-            print("Gibbs:\n", format_joint(J_gibbs))
+            print("Gibbs (single-site):\n", format_joint(J_gibbs))
         else:
-            J_gibbs = gibbs_checkerboard(n=10, beta=beta, init="random")
-            print("Gibbs:\n", format_joint(J_gibbs))
+            J_gibbs = gibbs_single_site(n=10, beta=beta, init="random",
+                                        n_samples=20000, burn_in=2000, thin=5, seed=1, scan="raster")
+            print("Gibbs (single-site):\n", format_joint(J_gibbs))
